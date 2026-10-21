@@ -1,17 +1,60 @@
 # ESP32-WATTIMETER
-This project is a true rms wattimeter based in the ESP32 microcontroller. It uses the ACS712 current sensor and a shunt resistor to measure the current and the voltage. The power is calculated by the product of the current and the voltage. The power is then averaged over a period of time to get the average power. The average power is then used to calculate the true rms power. The true rms power is then used to calculate the true rms current and voltage. The true rms power, current and voltage are then displayed on a web page and on a 0.96" OLED display.
+
+ESP32 (ESP-IDF) project for a true-RMS AC wattmeter: an ACS712 Hall-effect sensor measures current and a rectifier + resistive divider measures mains voltage, both sampled by the ESP32 ADC.
+
+## Project goal
+
+The design goal is to compute true-RMS voltage, current and power and show them on a web page and on a 0.96" OLED display. The math behind it is described [below](#math) and in `wattimeter.ipynb`.
+
+## Current firmware state
+
+What the firmware in `wattimeter/` does today:
+
+- Initializes ADC1 (one-shot driver, 12 dB attenuation) through the vendored [`esp32_drivers`](https://github.com/Gedankenn/esp32_drivers) ADC module.
+- Reads the **ACS712 current sensor on ADC1 channel 0 (GPIO 36)** and converts it to amperes (100 mV/A sensitivity, 2.5 V zero-current offset, 0.66 divider gain).
+- Reads the **voltage sensor on ADC1 channel 6 (GPIO 34)** (1 kΩ / 68 kΩ divider, gain 0.0147).
+- Prints raw ADC values and converted readings to the serial console every 2.5 s.
+
+RMS calculation, power calculation, the web page and the OLED display are **not implemented yet**.
 
 ## Hardware
 - ESP32 DevKitC
 - ACS712 current sensor
-- 0.96" OLED display
+- 0.96" OLED display (planned)
 - 10MΩ  Resistor
 - Hi-Link HLK-PM01 AC-DC converter 5V
 
+## Repository layout
+
+```
+esp32_wattimeter/
+├── wattimeter/                  # ESP-IDF project (target esp32, sdkconfig from ESP-IDF 5.4.0)
+│   ├── CMakeLists.txt
+│   └── main/
+│       ├── wattimeter.c
+│       ├── application/         # app.c (main loop), acs712.c (current), voltage.c (voltage)
+│       └── esp32_drivers/       # copy of the esp32_drivers ADC/PWM wrappers
+├── wattimeter.ipynb             # design notebook: ACS712 scaling, divider calculations, simulated signals
+├── ltspice_simulations/         # LTspice model of the rectifier + divider voltage sensor
+├── voltage_sensor.png           # voltage-sensor circuit
+└── current_sensor.png           # ACS712 datasheet excerpt
+```
+
+## Build and flash
+
+```bash
+cd wattimeter
+. $IDF_PATH/export.sh
+idf.py set-target esp32
+idf.py build
+idf.py -p /dev/ttyUSB0 flash monitor   # replace with your serial port
+```
+
+The project builds with ESP-IDF 5.4.
+
 ## Software
 - ESP-IDF
-
-## Schematic
+- Python 3 + Jupyter (`matplotlib`, `mplcyberpunk`) for the analysis notebook
 
 ## Math
 ### Voltage
@@ -65,6 +108,11 @@ from the datasheet we can see that 0A is at 2.5V. The sensitivity is 100mV/A. Th
 The Current is measured by the ACS712 current sensor. The ACS712 has a sensitivity of 100mV/A. The current is calculated by the formula:
 ```
 I = (((ADC * 3.3) / 4095) -2.5) / 0.1
+```
+
+In the firmware (`acs712.c`) the ACS712 output first goes through a divider with gain 0.66 (to bring 0–5 V into the ESP32 ADC range), so the code computes:
+```
+I = ((((ADC * 3.3) / 4095) / 0.66) - 2.5) / 0.1
 ```
 
 The Current is given by the integral of the current over a period of time. The integral of the current is given by the formula:
