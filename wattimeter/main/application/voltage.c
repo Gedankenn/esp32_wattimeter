@@ -34,5 +34,5 @@ float Voltage_read()
     float value = VOLTAGE_TO_VALUE(voltage);
     printf("Value: %f\n", value);
     printf("----------------------\n");
-    return voltage;
+    return value;
 }
