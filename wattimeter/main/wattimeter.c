@@ -12,20 +12,4 @@
 
 #include "app.h"
 
-TaskHandle_t task_handle = NULL;
-
-#define delay_ms(ms) vTaskDelay(ms / portTICK_PERIOD_MS)
-
-int main(void)
-{
-    printf("minimum stack size: %d\n", configMINIMAL_STACK_SIZE);
-
-    // Create a task
-    xTaskCreate(app_main, "wattimeter", 2048, NULL, 1, &task_handle);
-  
-    while(1)
-    {
-        delay_ms(1000);
-    }
-    return 0;
-}
+// The ESP-IDF entry point is app_main() in application/app.c.
